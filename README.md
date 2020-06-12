@@ -8,7 +8,7 @@ This is responsible for mapping the image space coordinates to servo coordinates
 
 ## cat-and-mouse.py
 
-This is the main driver file that is responsible for defining the playable space (set by a convex hull around the calibration points) and setting the object that is to be tracked. It will then have the laser point avoid that object as well as move towards the object when the object has been immobile.
+This is the main driver file that is responsible for defining the playable space (set by a convex hull around the calibration points for now) and setting the object that is to be tracked. It will then have the laser point avoid that object as well as move towards the object when the object has been immobile.
 
 ## mouse-sim-test.py
 
