@@ -12,4 +12,4 @@ This is the main driver file that is responsible for defining the playable space
 
 ## mouse-sim-test.py
 
-This is a way to test the "mouse" movement without the camera input by being able to control the "cat" with a cursor.
+This is a way to test the "mouse" movement without the camera input by being able to control the "cat" with a cursor. This file can be run without the Jetson hardware if you'd like to test it out yourself.
