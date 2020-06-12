@@ -63,7 +63,7 @@ def get_convex_hull_lines(points):
     return points[np.transpose(idxs)]
 
 
-points = np.load("calibration_points.npy")
+points = np.load("calibration/calibration_points.npy")
 p = np.transpose(points)
 mask = p[0]
 mask[mask<100] = 0
@@ -106,9 +106,12 @@ def cat(event, x, y, flags, param):
         cat_pos[0] = x
         cat_pos[1] = y
 
-def move_mouse(lines,normals,cat_pos,mouse_pos, i, circ_dirs):
-    displacement = get_repel_vector(lines,normals,cat_pos,mouse_pos)
-    mouse_pos = mouse_pos + displacement #+ circ_dirs[i]/2
+def move_mouse(lines,normals,cat_pos,mouse_pos,cat_still_count):
+    if cat_still_count >= 30 and cat_still_count <= 60:
+        mouse_pos = mouse_pos + (cat_pos-mouse_pos)/40
+    else:
+        displacement = get_repel_vector(lines,normals,cat_pos,mouse_pos)
+        mouse_pos = mouse_pos + displacement
 
     mouse = np.zeros_like(img)
     cv2.circle(mouse,tuple(mouse_pos.astype(np.uint16)),6,(0,0,255),-1)
@@ -118,11 +121,21 @@ circ_dirs = circ_path(10, dispW//2, dispH//2)
 cat_pos = point + 100
 cv2.namedWindow("image")
 cv2.setMouseCallback("image", cat, (img, cat_pos))
-i = 0
+
+cat_still_count = 0
+last_cat_pos = np.zeros(2,np.uint16)
+cat_still_dist_const = 8
+curr_time = time.time()
 while True:
-    mouse, mouse_pos = move_mouse(lines,normals,cat_pos,mouse_pos,i,circ_dirs)
-    cv2.imshow("image", img+mouse)
-    i+=1
+    if time.time() - curr_time > .015:
+        mouse, mouse_pos = move_mouse(lines,normals,cat_pos,mouse_pos,cat_still_count)
+        cv2.imshow("image", img+mouse)
+        if distance(last_cat_pos,cat_pos) < 8:
+            cat_still_count += 1
+        else:
+            cat_still_count = 0
+            last_cat_pos = np.copy(cat_pos)
+        curr_time = time.time()
     key = cv2.waitKey(1) & 0xFF 
 
     if key == ord("q"):

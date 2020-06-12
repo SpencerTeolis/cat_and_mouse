@@ -175,7 +175,6 @@ def move_mouse(lines, normals, cat_pos, mouse_pos, cat_still_count):
 
 curr_time = time.time()
 cat_still_count = 0
-cat_timer = time.time()
 last_cat_pos = np.zeros(2,np.uint16)
 cat_still_dist_const = 8
 
@@ -191,11 +190,8 @@ while True:
             cat_still_count += 1
         else:
             cat_still_count = 0
-            last_cat_pos = cat_pos
+            last_cat_pos = np.copy(cat_pos)
         
-        cat_timer = time.time()
-        
-
 
     #cv2.imshow("image", img+mouse)
     key = cv2.waitKey(1) & 0xFF 
