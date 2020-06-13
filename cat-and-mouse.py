@@ -133,6 +133,7 @@ for x,y in lines:
 
 
 mouse_pos = point.astype(np.uint16)
+mouse_dir = np.zeros(2)
 mouse = np.zeros_like(bounds)
 dispBounds = np.asarray([dispW,dispH])
 cv2.circle(mouse,tuple(mouse_pos),6,255,-1)
@@ -156,13 +157,14 @@ def get_cat_pos(frame):
     # cv2.imshow('momoMask', img)
     return cX, cY
 
-def move_mouse(lines, normals, cat_pos, mouse_pos, cat_still_count):
+def move_mouse(lines, normals, cat_pos, cat_still_count, mouse_pos, mouse_dir):
     if cat_still_count >= 120 and cat_still_count <= 180:
-        mouse_pos = mouse_pos + (cat_pos-mouse_pos)/40
+        displacement = (cat_pos-mouse_pos)/40
     else:
-        displacement = get_repel_vector(lines,normals,cat_pos,mouse_pos)
-        mouse_pos = mouse_pos + displacement
+        dampening = 0.7
+        displacement = get_repel_vector(lines,normals,cat_pos,mouse_pos) + dampening*mouse_dir
 
+    mouse_pos = mouse_pos + displacement
     mouse_pos = np.minimum(np.maximum(mouse_pos,0),dispBounds).astype(np.uint16)
     mouse = np.zeros_like(bounds)
     #cv2.circle(mouse,tuple(mouse_pos),6,255,-1)
@@ -171,7 +173,7 @@ def move_mouse(lines, normals, cat_pos, mouse_pos, cat_still_count):
     if pan and tilt:
         kit.servo[0].angle=pan
         kit.servo[1].angle=tilt
-    return mouse, mouse_pos
+    return mouse, mouse_pos, displacement
 
 curr_time = time.time()
 cat_still_count = 0
@@ -183,7 +185,7 @@ while True:
 
     if time.time() - curr_time > 0.015:
         cat_pos = np.asarray(get_cat_pos(frame))
-        mouse, mouse_pos = move_mouse(lines,normals,cat_pos,mouse_pos,cat_still_count)
+        mouse, mouse_pos, mouse_dir = move_mouse(lines,normals,cat_pos,cat_still_count,mouse_pos,mouse_dir)
         curr_time = time.time()
 
         if distance(last_cat_pos,cat_pos) < 10:

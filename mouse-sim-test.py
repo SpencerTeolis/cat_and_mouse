@@ -42,14 +42,15 @@ def get_unit_normals(lines, point):
 def get_repel_vector(lines, normals, cat, mouse):
     cat_scale = 3
     boundary_scale = 0.75
-    clip_value = 200
+    clip_value = 100
 
     dist = distance_from_line(lines, normals, mouse).reshape(-1,1)
     dist = np.append(dist,distance(cat, mouse))
     dist = dist/np.max(dist)
     
-    mc_vec = normalize_points(mouse-cat)*cat_scale#(mouse-cat)/np.linalg.norm(mouse-cat)*10
-    vecs = np.append(normals*boundary_scale,mc_vec.reshape(1,2),axis=0)
+    mc_vec = normalize_points(mouse-cat)*cat_scale
+    boundary_vecs = normals*boundary_scale
+    vecs = np.append(boundary_vecs,mc_vec.reshape(1,2),axis=0)
 
     mag = 1 / np.square(dist)
     mag = np.minimum(mag, clip_value)
@@ -88,6 +89,7 @@ for x,y in lines:
 
 mouse = np.zeros_like(img)
 mouse_pos = point.astype(np.uint16)
+mouse_dir = np.zeros(2)
 cv2.circle(mouse,tuple(mouse_pos),6,(0,0,255),-1)
 
 def circ_path(radius, cX, cY):
@@ -106,16 +108,17 @@ def cat(event, x, y, flags, param):
         cat_pos[0] = x
         cat_pos[1] = y
 
-def move_mouse(lines,normals,cat_pos,mouse_pos,cat_still_count):
+def move_mouse(lines,normals,cat_pos,cat_still_count,mouse_pos,mouse_dir):
     if cat_still_count >= 30 and cat_still_count <= 60:
-        mouse_pos = mouse_pos + (cat_pos-mouse_pos)/40
+        displacement = (cat_pos-mouse_pos)/40
     else:
-        displacement = get_repel_vector(lines,normals,cat_pos,mouse_pos)
-        mouse_pos = mouse_pos + displacement
-
+        dampening = 0.7
+        displacement = get_repel_vector(lines,normals,cat_pos,mouse_pos) + dampening*mouse_dir
+        
+    mouse_pos = mouse_pos + displacement
     mouse = np.zeros_like(img)
     cv2.circle(mouse,tuple(mouse_pos.astype(np.uint16)),6,(0,0,255),-1)
-    return mouse, mouse_pos
+    return mouse, mouse_pos, displacement
 
 circ_dirs = circ_path(10, dispW//2, dispH//2)
 cat_pos = point + 100
@@ -127,8 +130,9 @@ last_cat_pos = np.zeros(2,np.uint16)
 cat_still_dist_const = 8
 curr_time = time.time()
 while True:
+    cv2.imshow("image", img)#+mouse)
     if time.time() - curr_time > .015:
-        mouse, mouse_pos = move_mouse(lines,normals,cat_pos,mouse_pos,cat_still_count)
+        mouse, mouse_pos, mouse_dir = move_mouse(lines,normals,cat_pos,cat_still_count,mouse_pos,mouse_dir)
         cv2.imshow("image", img+mouse)
         if distance(last_cat_pos,cat_pos) < 8:
             cat_still_count += 1
