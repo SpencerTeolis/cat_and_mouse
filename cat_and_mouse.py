@@ -3,7 +3,7 @@ import cv2
 import time
 from adafruit_servokit import ServoKit
 from scene import Boundary
-from mouse import Mouse, repel_vector, attract_vector
+from mouse import Mouse, repel_vector, towards_cat
 from util_funcs import *
 
 def nothing(x):
@@ -75,7 +75,7 @@ bounds = np.zeros((dispH,dispW))
 for x,y in boundary.lines:
     cv2.line(bounds,tuple(x),tuple(y),255,2)
 
-mouse = Mouse(point, boundary, repel_vector, attract_vector)
+mouse = Mouse(point, boundary, repel_vector, towards_cat)
 dispBounds = np.asarray([dispW,dispH])
 
 def get_cat_pos(frame):

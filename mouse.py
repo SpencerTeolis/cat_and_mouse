@@ -47,13 +47,16 @@ class Mouse:
 
         return img
         
-def attract_vector(boundary: Boundary, mouse_pos, cat_pos):
+def towards_cat(boundary: Boundary, mouse_pos, cat_pos):
     # TODO check if in bounds
 
     return (cat_pos-mouse_pos)/40
 
+def towards_random_point(boundary: Boundary, mouse_pos, rand_point):
+    pass
+
 def repel_vector(boundary: Boundary, mouse_pos, cat_pos):
-    cat_scale = 2
+    cat_scale = 1
     boundary_scale = 0.75
     clip_value = 100
 

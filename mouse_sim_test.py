@@ -2,16 +2,16 @@ import numpy as np
 import cv2
 import time
 from scene import Boundary
-from mouse import Mouse, repel_vector, attract_vector
+from mouse import Mouse, repel_vector, towards_cat
 from util_funcs import *
 
 
 points = np.load("calibration/calibration_points.npy")
-p = np.transpose(points)
-mask = p[0]
-mask[mask<100] = 0
-mask[mask>1000] = 0
-points = np.transpose(p[:,mask.astype(bool)])
+# p = np.transpose(points)
+# mask = p[0]
+# mask[mask<100] = 0
+# mask[mask>1000] = 0
+# points = np.transpose(p[:,mask.astype(bool)])
 point = np.asarray([300,400])
 
 kwargs = {'calibration_points' : points, 'middle_point' : point}
@@ -26,7 +26,7 @@ for x,y in boundary.lines:
     cv2.line(img,tuple(x),tuple(y),(0,0,255),2)
 
 mouse_img = np.zeros_like(img)
-mouse = Mouse(point, boundary, repel_vector, attract_vector)
+mouse = Mouse(point, boundary, repel_vector, towards_cat)
 mouse.draw_mouse(mouse_img)
 
 def cat(event, x, y, flags, param):
