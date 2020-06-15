@@ -30,7 +30,7 @@ class Mouse:
             displacement = self.bait_method(self.boundary, self.position, cat_position)
         
         self.direction = displacement + self.direction * self.dampening
-        self.position = self.position + self.direction.astype(np.uint16)
+        self.position = self.position + self.direction.astype(np.int16)
 
     def mode(self, cat_position):
         if time.time() - self.last_move_time < self.still_time or distance(self.position, cat_position) < 200:
