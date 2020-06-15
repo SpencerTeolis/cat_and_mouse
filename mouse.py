@@ -24,7 +24,7 @@ class Mouse:
 
         if self.evade:
             displacement = self.evade_method(self.boundary, self.position, cat_position)
-            if np.sum(np.square(displacement)) > 6:
+            if distance(displacement) > 6:
                 self.last_move_time = time.time()
         else:
             displacement = self.bait_method(self.boundary, self.position, cat_position)
@@ -52,11 +52,8 @@ def towards_cat(boundary: Boundary, mouse_pos, cat_pos):
 
     return (cat_pos-mouse_pos)/40
 
-def towards_random_point(boundary: Boundary, mouse_pos, rand_point):
-    pass
-
 def repel_vector(boundary: Boundary, mouse_pos, cat_pos):
-    cat_scale = 1
+    cat_scale = 2
     boundary_scale = 0.75
     clip_value = 100
 

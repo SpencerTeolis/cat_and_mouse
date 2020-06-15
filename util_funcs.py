@@ -15,8 +15,11 @@ def distance_from_line(lines, normals, point):
     # n
     return(dot_p)
 
-def distance(a,b):
-    return np.linalg.norm(a-b)
+def distance(a):
+    return np.lingalg.norm(a)
+
+def distance(a, b):
+    return np.lingalg.norm(a-b)
 
 def get_convex_hull_lines(points):
     hull = ConvexHull(points)
