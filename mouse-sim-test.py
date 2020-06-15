@@ -1,67 +1,9 @@
 import numpy as np
 import cv2
 import time
-from scipy.spatial import ConvexHull
-
-def normalize_points(arr):
-    shape = arr.shape
-    arr = arr.reshape(-1,2)
-    arr = arr/np.linalg.norm(arr,axis=1).reshape(-1,1)
-    return arr.reshape(shape)
-
-
-def distance_from_line(lines, normals, point): 
-    vec1 = point - lines[:,0,:].reshape(-1,2)
-    dot_p = np.sum(vec1*normals,axis=1)
-
-    # n
-    return(dot_p)
-
-def distance(a,b):
-    return np.linalg.norm(a-b)
-
-def get_unit_normals(lines, point):
-    diff = lines[:,0,:] - lines[:,1,:]
-    normals = np.zeros_like(diff)
-    normals[:,0] = -diff[:,1]
-    normals[:,1] = diff[:,0]
-
-    vec1 = point - lines[:,0,:].reshape(-1,2)
-    dot_p = np.sum(vec1*normals,axis=1)
-
-    # Make unit length
-    normals = normalize_points(normals)
-
-    # Change Normals to face towards point
-    normals = normals * (dot_p/np.abs(dot_p)).reshape(-1,1)
-
-    # n, 2
-    return normals
-
-
-def get_repel_vector(lines, normals, cat, mouse):
-    cat_scale = 3
-    boundary_scale = 0.75
-    clip_value = 100
-
-    dist = distance_from_line(lines, normals, mouse).reshape(-1,1)
-    dist = np.append(dist,distance(cat, mouse))
-    dist = dist/np.max(dist)
-    
-    mc_vec = normalize_points(mouse-cat)*cat_scale
-    boundary_vecs = normals*boundary_scale
-    vecs = np.append(boundary_vecs,mc_vec.reshape(1,2),axis=0)
-
-    mag = 1 / np.square(dist)
-    mag = np.minimum(mag, clip_value)
-
-    return np.sum(mag.reshape(-1,1) * vecs, axis=0)
-
-def get_convex_hull_lines(points):
-    hull = ConvexHull(points)
-    idxs = np.stack((hull.vertices, np.roll(hull.vertices, -1)))
-
-    return points[np.transpose(idxs)]
+from scene import Boundary
+from mouse import Mouse, repel_vector, attract_vector
+from util_funcs import *
 
 
 points = np.load("calibration/calibration_points.npy")
@@ -70,34 +12,22 @@ mask = p[0]
 mask[mask<100] = 0
 mask[mask>1000] = 0
 points = np.transpose(p[:,mask.astype(bool)])
-
-lines = get_convex_hull_lines(points)
-#lines = np.asarray([[[20,20],[100,580]],[[20,20],[780,20]],[[100,580],[600,580]],[[780,20],[600,580]]])
 point = np.asarray([300,400])
-normals = get_unit_normals(lines,point)
-print(distance_from_line(lines,normals,point))
-print(normals)
 
-print(get_repel_vector(lines,normals,point,point+50))
+kwargs = {'calibration_points' : points, 'middle_point' : point}
+boundary = Boundary(**kwargs)
 
 dispW=1280 
 dispH=720
+disp_shape = (dispH,dispW,3)
 
-img = np.zeros((dispH,dispW,3))
-for x,y in lines:
+img = np.zeros(disp_shape)
+for x,y in boundary.lines:
     cv2.line(img,tuple(x),tuple(y),(0,0,255),2)
 
-mouse = np.zeros_like(img)
-mouse_pos = point.astype(np.uint16)
-mouse_dir = np.zeros(2)
-cv2.circle(mouse,tuple(mouse_pos),6,(0,0,255),-1)
-
-def circ_path(radius, cX, cY):
-    a = np.linspace(0,2*np.pi,360)
-    x = (cX + radius * np.cos(a)).astype(np.uint16)
-    # cv2.imshow('momoMask', img)nt16)
-    y = (cY + radius * np.sin(a)).astype(np.uint16)
-    return np.transpose(np.stack((np.roll(x,-1) - x, np.roll(y,-1) - y)))
+mouse_img = np.zeros_like(img)
+mouse = Mouse(point, boundary, repel_vector, attract_vector)
+mouse.draw_mouse(mouse_img)
 
 def cat(event, x, y, flags, param):
     img, cat_pos = param
@@ -108,37 +38,16 @@ def cat(event, x, y, flags, param):
         cat_pos[0] = x
         cat_pos[1] = y
 
-def move_mouse(lines,normals,cat_pos,cat_still_count,mouse_pos,mouse_dir):
-    if cat_still_count >= 30 and cat_still_count <= 60:
-        displacement = (cat_pos-mouse_pos)/40
-    else:
-        dampening = 0.7
-        displacement = get_repel_vector(lines,normals,cat_pos,mouse_pos) + dampening*mouse_dir
-        
-    mouse_pos = mouse_pos + displacement
-    mouse = np.zeros_like(img)
-    cv2.circle(mouse,tuple(mouse_pos.astype(np.uint16)),6,(0,0,255),-1)
-    return mouse, mouse_pos, displacement
-
-circ_dirs = circ_path(10, dispW//2, dispH//2)
 cat_pos = point + 100
 cv2.namedWindow("image")
 cv2.setMouseCallback("image", cat, (img, cat_pos))
 
-cat_still_count = 0
-last_cat_pos = np.zeros(2,np.uint16)
-cat_still_dist_const = 8
 curr_time = time.time()
 while True:
-    cv2.imshow("image", img)#+mouse)
     if time.time() - curr_time > .015:
-        mouse, mouse_pos, mouse_dir = move_mouse(lines,normals,cat_pos,cat_still_count,mouse_pos,mouse_dir)
-        cv2.imshow("image", img+mouse)
-        if distance(last_cat_pos,cat_pos) < 8:
-            cat_still_count += 1
-        else:
-            cat_still_count = 0
-            last_cat_pos = np.copy(cat_pos)
+        mouse.update_position(cat_pos)
+        mouse_img = mouse.draw_mouse((720,1280,3))
+        cv2.imshow("image", img+mouse_img)
         curr_time = time.time()
     key = cv2.waitKey(1) & 0xFF 
 
