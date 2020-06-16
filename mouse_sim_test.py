@@ -44,12 +44,12 @@ cv2.setMouseCallback("image", cat, (img, cat_pos))
 
 curr_time = time.time()
 while True:
-    if time.time() - curr_time > .015:
-        mouse.update_position(cat_pos)
-        mouse_img = mouse.draw_mouse((720,1280,3))
-        cv2.imshow("image", img+mouse_img)
-        curr_time = time.time()
-    key = cv2.waitKey(1) & 0xFF 
+    #if time.time() - curr_time > .015:
+    mouse.update_position(cat_pos)
+    mouse_img = mouse.draw_mouse((dispH,dispW,3))
+    cv2.imshow("image", img+mouse_img)
+    curr_time = time.time()
+    key = cv2.waitKey(300) & 0xFF 
 
     if key == ord("q"):
         break

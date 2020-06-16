@@ -24,7 +24,7 @@ class Mouse:
 
         if self.evade:
             displacement = self.evade_method(self.boundary, self.position, cat_position)
-            if distance(displacement) > 6:
+            if magnitude(displacement) > 6:
                 self.last_move_time = time.time()
         else:
             displacement = self.bait_method(self.boundary, self.position, cat_position)
