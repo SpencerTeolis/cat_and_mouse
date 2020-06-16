@@ -26,3 +26,12 @@ def get_convex_hull_lines(points):
     idxs = np.stack((hull.vertices, np.roll(hull.vertices, -1)))
 
     return points[np.transpose(idxs)]
+
+def in_range_video(frames, lower_bound, upper_bound):
+    g = np.greater_equal(frames, lower_bound)
+    g = g.all(axis=-1)
+
+    l = np.less_equal(frames, upper_bound)
+    l = l.all(axis=-1)
+
+    return np.logical_and(g,l)
