@@ -44,6 +44,7 @@ class Threshold:
         self.trackbar_names = trackbar_names
         self.__create_trackbars(init_vals, max_vals)
         self.bg_mask = None
+        self.last_mask = None
 
     def __create_trackbars(self, init_vals, max_vals):
         if isinstance(max_vals, int): 
@@ -66,7 +67,10 @@ class Threshold:
         if len(frames.shape) == 4:
             frames = np.stack(frames) # nframes, dispH, dispW, dispChannels
 
-        self.bg_mask = in_range_video(frames, lower_bound, upper_bound)
+        bg_mask = in_range_video(frames, lower_bound, upper_bound)
+
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
+        self.bg_mask = cv2.dilate(bg_mask.astype(np.uint8),kernel,iterations=2).astype(bool)
 
     def get_mask(self, frame):
         lower_bound, upper_bound = self.get_trackbar_values()
