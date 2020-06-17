@@ -57,16 +57,9 @@ mouse = Mouse(point, boundary, repel_vector, towards_cat)
 dispBounds = np.asarray([dispW,dispH])
 
 def get_cat_pos(frame):
-    momoMask = cv2.inRange(frame,l_b,u_b)
-    momoMask[blackMask==255] = False
+    img = thresh.get_segmentation(frame) 
 
-    M = cv2.moments(momoMask)
-    cX, cY = 0, 0
-    if M['m00'] != 0:
-        cX = int(M['m10']/M['m00']) 
-        cY = int(M['m01']/M['m00']) 
-
-    return cX, cY
+    return thresh.get_midpoint(img.any(axis=-1).astype(np.uint8))
 
 def move_mouse(mouse, cat_pos):
     mouse.update_position(cat_pos)
