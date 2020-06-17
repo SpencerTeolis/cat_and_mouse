@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import time
+import display
 from scene import Boundary
 from mouse import Mouse, repel_vector, towards_cat
 from util_funcs import *
@@ -15,9 +16,8 @@ for x,y in boundary.lines:
     cv2.line(bounds,tuple(x),tuple(y),(0,0,255),2)
 
 # Create mouse
-mouse_img = np.zeros_like(bounds)
 mouse = Mouse(point, boundary, repel_vector, towards_cat)
-mouse.draw_mouse(mouse_img)
+img = np.copy(bounds)
 
 # Move 'cat' with cursor
 def cat(event, x, y, flags, param):
@@ -27,19 +27,13 @@ def cat(event, x, y, flags, param):
         cv2.circle(img, (x,y), 6, (0,255,0),-1)
         cat_pos[:] = x, y
 
+def update(img, mouse=None):
+    cv2.circle(img, tuple(mouse.position), 6, (0,0,0),-1)
+    mouse.update_position(cat_pos)
+    cv2.circle(img, tuple(mouse.position), 6, (0,0,255),-1)
+
 cat_pos = point + 100
 cv2.namedWindow("image")
-cv2.setMouseCallback("image", cat, (bounds, cat_pos))
+cv2.setMouseCallback("image", cat, (img, cat_pos))
 
-# Main loop
-while True:
-    mouse.update_position(cat_pos)
-    mouse_img = mouse.draw_mouse(disp_shape)
-    cv2.imshow("image", img+mouse_img)
-
-    key = cv2.waitKey(300) & 0xFF 
-
-    if key == ord("q"):
-        break
-
-cv2.destroyAllWindows()
+display.display_img(img, "image", update, mouse=mouse)

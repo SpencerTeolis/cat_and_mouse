@@ -53,8 +53,8 @@ def towards_cat(boundary: Boundary, mouse_pos, cat_pos):
     return (cat_pos-mouse_pos)/40
 
 def repel_vector(boundary: Boundary, mouse_pos, cat_pos):
-    cat_scale = 2
-    boundary_scale = 0.75
+    cat_scale = 1
+    boundary_scale = 1
     clip_value = 100
 
     dist = distance_from_line(boundary.lines, boundary.normals, mouse_pos).reshape(-1,1)
