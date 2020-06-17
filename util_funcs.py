@@ -35,3 +35,10 @@ def in_range_video(frames, lower_bound, upper_bound):
     l = l.all(axis=-1)
 
     return np.logical_and(g,l)
+
+def mask(arr, mask, replace_value = None):
+    dispW, dispH, channels = arr.shape
+    if replace_value is None:
+        replace_value = np.zeros(channels)
+
+    return np.where(mask.reshape(dispW,dispH,1), arr, replace_value)
