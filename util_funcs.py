@@ -34,7 +34,7 @@ def in_range_video(frames, lower_bound, upper_bound):
     l = np.less_equal(frames, upper_bound)
     l = l.all(axis=-1)
 
-    return np.logical_and(g,l)
+    return np.logical_and(g,l).any(axis=0)
 
 def mask_img(arr, mask, replace_value = None):
     dispW, dispH, channels = arr.shape
