@@ -24,7 +24,8 @@ interp_p = np.nan_to_num(np.load("calibration/interp_p.npy"))
 interp_t = np.nan_to_num(np.load("calibration/interp_t.npy"))
 
 # Set bounds
-kwargs = {'calibration_points' : points, 'middle_point' : np.asarray([dispW//2,dispH//2],np.uint16)}
+point = np.asarray([dispW//2,dispH//2],np.uint16)
+kwargs = {'calibration_points' : points, 'middle_point' : point}
 boundary = Boundary(**kwargs)
 bounds = np.zeros((dispH,dispW))
 for x,y in boundary.lines:
@@ -51,7 +52,7 @@ for i in range(50):
     frames.append(cam.read()[1])
     time.sleep(0.01)
 
-thresh.set_background_mask(frames)
+thresh.seg.set_background_mask(frames)
 
 mouse = Mouse(point, boundary, repel_vector, towards_cat)
 dispBounds = np.asarray([dispW,dispH])

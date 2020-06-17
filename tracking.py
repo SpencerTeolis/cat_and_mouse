@@ -64,7 +64,7 @@ class Threshold:
         lower_bound = np.minimum(lower_bound, lower_bound-2)
         upper_bound = np.maximum(upper_bound, upper_bound+2)
         
-        if len(frames.shape) == 4:
+        if isinstance(frames, list):
             frames = np.stack(frames) # nframes, dispH, dispW, dispChannels
 
         bg_mask = in_range_video(frames, lower_bound, upper_bound)
