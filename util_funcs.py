@@ -36,9 +36,9 @@ def in_range_video(frames, lower_bound, upper_bound):
 
     return np.logical_and(g,l)
 
-def mask(arr, mask, replace_value = None):
+def mask_img(arr, mask, replace_value = None):
     dispW, dispH, channels = arr.shape
     if replace_value is None:
-        replace_value = np.zeros(channels)
+        replace_value = np.zeros(channels, dtype=np.uint8)
 
     return np.where(mask.reshape(dispW,dispH,1), arr, replace_value)
