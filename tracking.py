@@ -59,10 +59,10 @@ class Threshold:
 
         return bounds.reshape(2,-1)
 
-    def set_background_mask(self, frames):
+    def set_background_mask(self, frames, tolerance):
         lower_bound, upper_bound = self.get_trackbar_values()
-        lower_bound = np.minimum(lower_bound, lower_bound-2)
-        upper_bound = np.maximum(upper_bound, upper_bound+2)
+        lower_bound = np.minimum(lower_bound, lower_bound-tolerance)
+        upper_bound = np.maximum(upper_bound, upper_bound+tolerance)
         
         if isinstance(frames, list):
             frames = np.stack(frames) # nframes, dispH, dispW, dispChannels
