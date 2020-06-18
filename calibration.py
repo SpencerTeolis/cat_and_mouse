@@ -1,125 +1,96 @@
+# File to calibrate servos for a given setup.
+#
+# User specfies thresholding values to segment the laser point, then frames from the camera are taken at a lattice 
+# of servo coordinates where the laser point is segmented and the corresponding x and y coordinates are found.
+# 
+# The resulting samples are then linearly interpolated between to create a pan tilt value for each image pixel.
+# These maps, the points sampled, and the values at each point are saved in the calibration folder to use later.  
+
 from adafruit_servokit import ServoKit
 from collections import deque
 from scipy import interpolate
+from tracking import TrackObject, Threshold
+from util_funcs import *
+import display
+import sys
 import cv2
 import numpy as np
 import time
 import random
 import os
 
-def nothing(x):
-    pass
-
-cv2.namedWindow('TrackBars')
-cv2.moveWindow('TrackBars', 0,0)
-
-trackbar_names = ['RedLow','RedHigh','GreenLow','GreenHigh','BlueLow','BlueHigh']
-init_vals = [183,255,100,255,191,255]
-max_val = 255
-
-for name, val in zip(trackbar_names, init_vals):
-    cv2.createTrackbar(name, 'TrackBars',val,max_val,nothing)
-
+# Set up servos
 kit = ServoKit(channels=16)
-#3264x2464
-dispW=1280 
-dispH=720
-flip=0
 
-camSet='nvarguscamerasrc !  video/x-raw(memory:NVMM), width=1280, height=720, format=NV12, framerate=21/1 ! nvvidconv flip-method='+str(flip)+' ! video/x-raw, width='+str(dispW)+', height='+str(dispH)+', format=BGRx ! videoconvert ! video/x-raw, format=BGR ! appsink'
-cam=cv2.VideoCapture(camSet)
+# Set up camera and image window
+dispW, dispH = 1280, 720
+cam = display.set_camera(dispW, dispH)
+cv2.namedWindow("image")
+cv2.moveWindow("image", 200,0)
 
-# Define threshold values for laser
-ret, frame = cam.read()
-print(frame.shape)
-while True:
-    ret, frame = cam.read()
+# Create tracking object for laser
+thresh = TrackObject(Threshold, init_vals = [191,191,191,255,255,255])
 
-    l_b = np.asarray([cv2.getTrackbarPos(name,'TrackBars') for name in trackbar_names[::2]])
-    u_b = np.asarray([cv2.getTrackbarPos(name,'TrackBars') for name in trackbar_names[1::2]])
-
-    laserMask = cv2.inRange(frame,l_b,u_b)
-    cv2.imshow('laserMask', laserMask)
-    cv2.moveWindow('laserMask',610,610)
-
-    if cv2.waitKey(1)==ord('q'):
-        break
-
-cv2.destroyAllWindows()
+# Get values for thresholding
+display.display_cam(cam, "image", thresh.get_segmentation)
 
 # Move laser out of the way
 kit.servo[0].angle = 0
 kit.servo[1].angle = 0
-time.sleep(2)
+cam.read()
+time.sleep(3)
 
-# Get other objects in the scene that have the same threshold values as the laser
-blackMask = np.zeros((dispH,dispW))
-for i in range(50):
-    ret, frame = cam.read()
+# Get other objects in the scene that have the same threshold values as the tracking object
+frames = []
+for i in range(20):
+    frames.append(cam.read()[1])
     time.sleep(0.01)
-    blackMask = np.logical_or(blackMask, cv2.inRange(frame,l_b-30,u_b))
 
-blackMask = blackMask.astype(np.uint8)*255
-kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
-blackMask = cv2.dilate(blackMask,kernel,iterations=1) 
+thresh.seg.set_background_mask(frames, 20)
+cv2.imshow('image', thresh.seg.bg_mask.astype(np.uint8)*255)
 
-curr_time = time.time()
+if cv2.waitKey(0)==ord('q'):
+    sys.exit(0)
 
-# Define grid of pan and tilt coordinates to calibrate on 
+# Define grid of pan and tilt coordinates to sample 
 min_pan, max_pan, min_tilt, max_tilt, step =  20, 181, 120, 181, 5
 pt_grid = np.transpose(np.mgrid[min_pan:max_pan:step,min_tilt:max_tilt:step]).reshape(-1,2)
 
 # grid of xy coordinates to fill in during calibration 
 xy_grid = np.zeros_like(pt_grid)
 
-i = 0
-max_i = pt_grid.shape[0]
-flip = 1
-while True:
-    ret, frame = cam.read()
-    if time.time() - curr_time > .25:
-
-        if flip > 0:
-            p,t = pt_grid[i%max_i]
+# Calibration loop
+def calibrate(frame, xy_grid, pt_grid, state, max_i):
+    img = thresh.get_segmentation(frame)
+    i, last_time = state
+    if time.time() - last_time > .25:
+        if i%2 == 0:
+            # Hack: the segmented frame and the corresponding servo position is one off so add 1
+            p,t = pt_grid[(i//2)+1 % max_i]
             kit.servo[0].angle = p
             kit.servo[1].angle = t
-
         else:
-            ret, frame = cam.read()
-            laserMask = cv2.inRange(frame,l_b,u_b)
-            laserMask[blackMask==255] = False
-            cv2.imshow('laserMask', laserMask)
+            xy_grid[(i//2) % max_i] = thresh.get_midpoint(img.any(axis=-1).astype(np.uint8))
 
-            M = cv2.moments(laserMask)
-            cX, cY = 0, 0
-            if M['m00'] != 0:
-                print("not zero")
-                cX = int(M['m10']/M['m00']) 
-                cY = int(M['m01']/M['m00'])         
-
-            print(np.sum(laserMask)/255)
-
-            xy_grid[i%max_i] = [cX, cY]
-            i += 1
-
-        flip *= -1
-        curr_time=time.time()
-
-    if cv2.waitKey(1)==ord('q'):
-        break
-
-cv2.destroyAllWindows()
+        state[:] = i+1, time.time()
+    return img
+    
+state = [0, time.time()]
+display.display_cam(cam, "image", calibrate, xy_grid=xy_grid, pt_grid=pt_grid, state=state, max_i=pt_grid.shape[0])
 
 X,Y = np.mgrid[0:dispW+1,0:dispH+1]
 
-points_mask = np.sum(xy_grid, axis=1).astype(bool)
+# Get list of points in the image where a pan and tilt value was recorded
+points_mask = xy_grid.any(axis=1)
 points = xy_grid[points_mask,:]
 pan_values = pt_grid[points_mask,0]
 tilt_values = pt_grid[points_mask,1]
 
+# Linearly interpolate between sampled points to create an image sized map of pan and tilt values
 interp_p = interpolate.griddata(points, pan_values, (X, Y))
 interp_t = interpolate.griddata(points, tilt_values, (X, Y))
 
+# Save calibration values for defining servo range of motion and to use in cat_and_mouse.py
 os.makedirs("calibration",exist_ok=True)
 np.save("calibration/pan_values.npy", pan_values)
 np.save("calibration/tilt_values.npy", tilt_values)
@@ -129,7 +100,8 @@ np.save("calibration/interp_t.npy", interp_t)
 
 img_overlay = np.zeros((dispH,dispW))
 img_overlay[points[:,1], points[:,0]] = 255
-img_overlay = cv2.dilate(img_overlay,kernel,iterations=1) 
+img_overlay = cv2.dilate(img_overlay, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3)), iterations=1) 
+
 def move_servos(event,x,y,flags,param):
     if time.time() - curr_time[0] >= .015:
         pan = interp_p[x,y]
@@ -142,17 +114,14 @@ def move_servos(event,x,y,flags,param):
         
         curr_time[0] = time.time()
 
-curr_time = [time.time()]
-cv2.namedWindow('nanoCam')
-cv2.setMouseCallback('nanoCam', move_servos)
-while True:
-    ret, frame = cam.read()
+def update(frame, img_overlay):
     frame[img_overlay.astype(bool)] = [255,0,0]
-    cv2.imshow('nanoCam', frame)
-    
-    if cv2.waitKey(1)==ord('q'):
-        break
+    return frame
 
+# Test if calibration worked
+curr_time = [time.time()]
+cv2.setMouseCallback('image', move_servos)
+display.display_cam(cam, 'image', update, img_overlay=img_overlay)
 
 cam.release()
 cv2.destroyAllWindows()
