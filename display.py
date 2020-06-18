@@ -17,7 +17,7 @@ def display_cam(cam, window_name, img_function, wait=1, **kwargs):
 def do_with_cam(cam, window_name, img_function, wait=1, **kwargs):
     while True:
         ret, frame = cam.read()
-        img = img_function(frame, **kwargs)
+        img_function(frame, **kwargs)
         
         if cv2.waitKey(wait)==ord('q'):
             break
