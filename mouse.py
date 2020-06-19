@@ -8,63 +8,65 @@ from util_funcs import *
 
 class Mouse:
 
-    def __init__(self, position, boundary: Boundary, evade_method, bait_method, momentum_scale=0.7, still_time=3):
+    def __init__(self, position, boundary: Boundary, evade_method, bait_method, still_time=3):
         self.boundary = boundary
         self.position = position.astype(np.int16)
         self.direction = np.zeros(2)
-        self.dampening = momentum_scale
         self.evade_method = evade_method
         self.bait_method = bait_method
         self.evade = True
         self.last_move_time = time.time()
         self.still_time = still_time
+        self.last_cat_pos = np.zeros(2, dtype=np.int16)
 
     def update_position(self, cat_position):
         self.mode(cat_position)
 
+        args = [self.boundary, self.position, self.direction, cat_position]
         if self.evade:
-            displacement = self.evade_method(self.boundary, self.position, cat_position)
-            if magnitude(displacement) > 6:
-                self.last_move_time = time.time()
+            new_pos = self.evade_method(*args)
         else:
-            displacement = self.bait_method(self.boundary, self.position, cat_position)
+            new_pos = self.bait_method(*args)
         
-        self.direction = displacement + self.direction * self.dampening
-        self.position = self.position + self.direction.astype(np.int16)
+        self.direction = new_pos - self.position
+        self.position = new_pos.astype(np.int16)
 
     def mode(self, cat_position):
-        if time.time() - self.last_move_time < self.still_time or distance(self.position, cat_position) < 200:
+        if distance(self.last_cat_pos, cat_position) > 6:
+            self.last_cat_pos = np.copy(cat_position)
+            self.last_move_time = time.time()
+
+        if (time.time() - self.last_move_time < self.still_time) or (distance(self.position, cat_position) < 100):
             self.evade = True
         else:
             self.evade = False 
 
-    def draw_mouse(self, disp_shape):
-        # TODO fix for some reason passing (720,1280,3) as disp_shape gives 
-        # "ValueError: maximum supported dimension for an ndarray is 32, found 720"
-        disp_shape = (720,1280,3)
-        img = np.zeros(disp_shape)
-        cv2.circle(img,tuple(self.position),6,(0,0,255),-1)
-
-        return img
         
-def towards_cat(boundary: Boundary, mouse_pos, cat_pos):
-    # TODO check if in bounds
+def towards_cat(boundary: Boundary, mouse_pos,  mouse_dir, cat_pos):
+    new_pos = mouse_pos + (cat_pos-mouse_pos)/40
 
-    return (cat_pos-mouse_pos)/40
+    return new_pos if boundary.in_bounds(new_pos) else mouse_pos
 
-def repel_vector(boundary: Boundary, mouse_pos, cat_pos):
-    cat_scale = 1
+def repel_all(boundary: Boundary, mouse_pos, mouse_dir, cat_pos):
+    cat_scale = 1.5
     boundary_scale = 1
     clip_value = 100
+    dampening = 0.5
 
-    dist = distance_from_line(boundary.lines, boundary.normals, mouse_pos).reshape(-1,1)
+    # Distance from mouse position to each boundary
+    dist = distance_from_line(boundary.vertices, boundary.edge_normals, mouse_pos).reshape(-1,1)
+    # Append mouse to cat distance to array of mouse to boundary distances 
     dist = np.append(dist,distance(cat_pos, mouse_pos)/2)
-    dist = dist/np.max(dist)
+    # Scale distances so that the distance from the middle to an edge is about 1
+    dist = dist/np.mean(magnitude(boundary.interior_vecs, axis=1))
     
+    # Get direction vectors forces should be applied on
     mc_vec = normalize_points(mouse_pos-cat_pos)*cat_scale
-    vecs = np.append(boundary.normals*boundary_scale,mc_vec.reshape(1,2),axis=0)
+    vecs = np.append(boundary.edge_normals * boundary_scale, mc_vec.reshape(1,2), axis=0)
 
-    mag = 1 / np.square(dist)
-    mag = np.minimum(mag, clip_value)
+    # Get magnitude of force/displacement proportional to 1/dist^2 with max of clip_value
+    mag = np.minimum(1 / np.square(dist), clip_value)
+    repel_vector = np.sum(mag.reshape(-1,1) * vecs, axis=0)
+    new_pos = mouse_pos + repel_vector + (mouse_dir * dampening)
 
-    return np.sum(mag.reshape(-1,1) * vecs, axis=0)
+    return new_pos if boundary.in_bounds(new_pos) else mouse_pos
