@@ -10,7 +10,7 @@ class Mouse:
 
     def __init__(self, position, boundary: Boundary, evade_method, bait_method, momentum_scale=0.7, still_time=3):
         self.boundary = boundary
-        self.position = position.astype(np.uint16)
+        self.position = position.astype(np.int16)
         self.direction = np.zeros(2)
         self.dampening = momentum_scale
         self.evade_method = evade_method
