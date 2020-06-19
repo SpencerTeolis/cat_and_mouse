@@ -3,7 +3,7 @@ import cv2
 import time
 from adafruit_servokit import ServoKit
 from scene import Boundary
-from mouse import Mouse, repel_vector, towards_cat
+from mouse import Mouse, repel_all, towards_cat
 from tracking import TrackObject, Threshold
 from util_funcs import *
 
@@ -54,7 +54,7 @@ for i in range(50):
 
 thresh.seg.set_background_mask(frames)
 
-mouse = Mouse(point, boundary, repel_vector, towards_cat)
+mouse = Mouse(point, boundary, repel_all, towards_cat)
 dispBounds = np.asarray([dispW,dispH])
 
 def get_cat_pos(frame):
