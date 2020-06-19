@@ -6,9 +6,9 @@ def normalize_points(arr):
     arr = arr/np.linalg.norm(arr,axis=1).reshape(-1,1)
     return arr.reshape(shape)
 
-def distance_from_line(lines, normals, point): 
+def distance_from_line(vertices, normals, point): 
     # vectors from start of line segment to given point
-    vec1 = point - lines[:,0,:].reshape(-1,2)
+    vec1 = point - vertices
     dot_p = np.sum(vec1*normals,axis=1)
 
     # n
