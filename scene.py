@@ -5,12 +5,12 @@ from util_funcs import normalize_points, magnitude
 class Boundary:
 
     def __init__(self, **kwargs):
-        self.lines = self.get_convex_hull_lines(kwargs["calibration_points"])
+        self.vertices = self.get_convex_hull_vertices(kwargs["calibration_points"])
         self.interior_point = kwargs["middle_point"]
 
-        self.edge_vecs = self.lines[:,1,:] - self.lines[:,0,:]
-        self.interior_vecs = self.interior_point - self.lines[:,0,:].reshape(-1,2)
-        self.normals = self.__get_unit_normals()
+        self.edge_vecs = np.roll(self.vertices, -1, axis=0) - self.vertices
+        self.interior_vecs = self.interior_point - self.vertices
+        self.edge_normals = self.__get_unit_normals()
         self.areas = self.__get_triangle_areas()
 
     def __get_unit_normals(self):
@@ -26,37 +26,40 @@ class Boundary:
 
     def __get_triangle_areas(self):
         base = magnitude(self.edge_vecs, axis=1)
-        height = np.sum(self.normals * self.interior_vecs, axis=1)
+        height = np.sum(self.edge_normals * self.interior_vecs, axis=1)
 
         return base * height / 2
 
-    def get_convex_hull_lines(self, points):
-        hull = ConvexHull(points)
-        idxs = np.stack((hull.vertices, np.roll(hull.vertices, -1)))
+    def get_convex_hull_vertices(self, points):
+        return points[ConvexHull(points).vertices]
 
-        return points[np.transpose(idxs)]
+    def project_on_normals(self, point):
+        vec1 = point - self.vertices.reshape(-1,2)
+        return np.sum(vec1 * self.edge_normals, axis=1)
 
     def in_bounds(self, point) -> bool:
-        vec1 = point - self.lines[:,0,:].reshape(-1,2)
-        dot_p = np.sum(vec1 * self.normals, axis=1)
+        return (self.project_on_normals(point) >= 0).all()
 
-        return (dot_p >= 0).all()
-
-    def get_point_in_triangle(self, vec1, vec2, uniform=True):
+    def get_point_in_triangle(self, vec1, vec2):
         a1, a2 = np.random.uniform(0, 1, size=2)
-        if uniform:
-            while a2 > 1-a1:
-                a1, a2 = np.random.uniform(0, 1, size=2)
-        else:
-            a2 *= (1-a1)
+        while a2 > 1-a1:
+            a1, a2 = np.random.uniform(0, 1, size=2)
 
         return a1 * vec1 + a2 * vec2
 
-    # If not uniform points tend towards the center 
-    def get_point_in_bounds(self, uniform=True):
+    def get_point_in_bounds(self):
         probs = self.areas/np.sum(self.areas)
         triangle_idx = np.random.choice(len(self.areas), p=probs)
+
         vec1 = self.interior_vecs[triangle_idx]
         vec2 = self.edge_vecs[triangle_idx]
 
-        return self.get_point_in_triangle(vec1, vec2, uniform) + self.lines[triangle_idx ,0]
+        return self.get_point_in_triangle(vec1, vec2) + self.vertices[triangle_idx]
+
+    def draw_attributes(self, img):
+        import cv2
+        for i, v in enumerate(self.vertices):
+            cv2.circle(img, tuple(v), 6, (255,0,0),-1)
+            cv2.line(img, tuple(v), tuple(self.edge_vecs[i].astype(np.int16) + v), (200,0,200), 1)
+            cv2.line(img, tuple(v), tuple(self.interior_vecs[i].astype(np.int16) + v), (200,0,200), 1)
+            cv2.arrowedLine(img, tuple(v), tuple((self.edge_normals[i] * 50).astype(np.int16) + v), (0,255,255), 1)
