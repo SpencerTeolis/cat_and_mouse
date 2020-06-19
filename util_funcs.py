@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.spatial import ConvexHull
 
 def normalize_points(arr):
     shape = arr.shape
@@ -15,17 +14,11 @@ def distance_from_line(lines, normals, point):
     # n
     return(dot_p)
 
-def magnitude(a):
-    return np.linalg.norm(a)
+def magnitude(a, axis=0):
+    return np.linalg.norm(a, axis=axis)
 
 def distance(a, b):
     return np.linalg.norm(a-b)
-
-def get_convex_hull_lines(points):
-    hull = ConvexHull(points)
-    idxs = np.stack((hull.vertices, np.roll(hull.vertices, -1)))
-
-    return points[np.transpose(idxs)]
 
 def in_range_video(frames, lower_bound, upper_bound):
     g = np.greater_equal(frames, lower_bound)
