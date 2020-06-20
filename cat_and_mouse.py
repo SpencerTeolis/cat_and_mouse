@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import time
 import display
+import sys
 from adafruit_servokit import ServoKit
 from scene import Boundary
 from mouse import Mouse, repel_all, towards_cat
@@ -20,9 +21,6 @@ cv2.moveWindow("image", 200,0)
 # Create tracking object for laser
 thresh = TrackObject(Threshold,init_vals = [0,0,0,70,100,64])
 
-# Get values for thresholding
-display.display_cam(cam, "image", thresh.get_mask)
-
 # Load servo coordinates to image coordinates maps
 points = np.load("calibration/calibration_points.npy")
 interp_p = np.nan_to_num(np.load("calibration/interp_p.npy"))
@@ -40,16 +38,8 @@ boundary = Boundary(**kwargs)
 pts = boundary.vertices.reshape(-1,1,2)
 
 # Get other objects in the scene that have the same threshold values as the tracking object
-frames = []
-for i in range(20):
-    frames.append(cam.read()[1])
-    time.sleep(0.01)
+thresh.seg.set_background_mask_cam(cam, num_frames=20, tolerance=5)
 
-thresh.seg.set_background_mask(frames, 5)
-cv2.imshow('image', thresh.seg.bg_mask.astype(np.uint8)*255)
-
-if cv2.waitKey(0)==ord('q'):
-    sys.exit(0)
 
 mouse = Mouse(point, boundary, repel_all, towards_cat)
 dispBounds = np.asarray([dispW,dispH])
@@ -59,13 +49,13 @@ def update(frame, mouse, state):
     cat_pos = thresh.get_midpoint(mask)
 
     if time.time() - state[0] > 0.015:
-        mouse.update_position(cat_pos)
-        x, y = mouse.position
-        pan = interp_p[x, y]
-        tilt = interp_t[x, y]
-        if pan and tilt:
-            kit.servo[0].angle=pan
-            kit.servo[1].angle=tilt
+        # mouse.update_position(cat_pos)
+        # x, y = mouse.position
+        # pan = interp_p[x, y]
+        # tilt = interp_t[x, y]
+        # if pan and tilt:
+        #     kit.servo[0].angle=pan
+        #     kit.servo[1].angle=tilt
         
         state[0] = time.time()
 

@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+import display
 from util_funcs import *
 
 def nothing(x): pass
@@ -59,19 +60,6 @@ class Threshold:
 
         return bounds.reshape(2,-1)
 
-    def set_background_mask(self, frames, tolerance=2):
-        lower_bound, upper_bound = self.get_trackbar_values()
-        lower_bound = np.minimum(lower_bound, lower_bound-tolerance)
-        upper_bound = np.maximum(upper_bound, upper_bound+tolerance)
-        
-        if isinstance(frames, list):
-            frames = np.stack(frames) # nframes, dispH, dispW, dispChannels
-
-        bg_mask = in_range_video(frames, lower_bound, upper_bound)
-
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
-        self.bg_mask = cv2.dilate(bg_mask.astype(np.uint8),kernel,iterations=2).astype(bool)
-
     def get_mask(self, frame):
         lower_bound, upper_bound = self.get_trackbar_values()
         fg = cv2.inRange(frame, lower_bound, upper_bound)
@@ -85,3 +73,34 @@ class Threshold:
         fg_mask = self.get_mask(frame)
 
         return mask_img(frame, fg_mask)
+
+    def set_background_mask(self, frames, tolerance=2):
+        lower_bound, upper_bound = self.get_trackbar_values()
+        lower_bound = np.minimum(lower_bound, lower_bound-tolerance)
+        upper_bound = np.maximum(upper_bound, upper_bound+tolerance)
+        
+        if isinstance(frames, list):
+            frames = np.stack(frames) # nframes, dispH, dispW, dispChannels
+
+        bg_mask = in_range_video(frames, lower_bound, upper_bound)
+
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
+        self.bg_mask = cv2.dilate(bg_mask.astype(np.uint8),kernel,iterations=2).astype(bool)
+
+    def set_background_mask_cam(self, cam, num_frames=20, tolerance=2): 
+        while True:
+            print("Hit 'q' to accept threshold values and set background mask")
+            display.display_cam(cam, "image", self.get_mask)
+
+            frames = []
+            for i in range(num_frames):
+                frames.append(cam.read()[1])     
+            self.set_background_mask(frames, tolerance=tolerance)
+
+            print("Hit 'q' to accept background mask hit any other key to redo")
+            cv2.imshow('image', self.bg_mask.astype(np.uint8)*255)
+
+            if cv2.waitKey(0)==ord('q'):
+                break
+
+            self.bg_mask = None
