@@ -61,16 +61,15 @@ xy_grid = np.zeros_like(pt_grid)
 
 # Calibration loop
 def calibrate(frame, xy_grid, pt_grid, state, max_i):
-    img = thresh.get_segmentation(frame)
+    img = thresh.get_mask(frame)
     i, last_time = state
     if time.time() - last_time > .25:
         if i%2 == 0:
-            # Hack: the segmented frame and the corresponding servo position is one off so add 1
-            p,t = pt_grid[(i//2)+1 % max_i]
+            p,t = pt_grid[(i//2) % max_i]
             kit.servo[0].angle = p
             kit.servo[1].angle = t
         else:
-            xy_grid[(i//2) % max_i] = thresh.get_midpoint(img.any(axis=-1).astype(np.uint8))
+            xy_grid[(i//2) % max_i] = thresh.get_midpoint(img)
 
         state[:] = i+1, time.time()
     return img
