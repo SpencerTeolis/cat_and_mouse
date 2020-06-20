@@ -8,8 +8,6 @@ from mouse import Mouse, repel_all, towards_cat
 from tracking import TrackObject, Threshold
 from util_funcs import *
 
-#TODO: camera lagging
-
 # Set up servos
 kit = ServoKit(channels=16)
 
@@ -23,7 +21,7 @@ cv2.moveWindow("image", 200,0)
 thresh = TrackObject(Threshold,init_vals = [0,0,0,70,100,64])
 
 # Get values for thresholding
-display.display_cam(cam, "image", thresh.get_segmentation)
+display.display_cam(cam, "image", thresh.get_mask)
 
 # Load servo coordinates to image coordinates maps
 points = np.load("calibration/calibration_points.npy")
@@ -39,12 +37,7 @@ mask[mask>1000] = 0
 points = np.transpose(p[:,mask.astype(bool)])
 kwargs = {'calibration_points' : points, 'middle_point' : point}
 boundary = Boundary(**kwargs)
-bounds = np.zeros((dispH,dispW))
 pts = boundary.vertices.reshape(-1,1,2)
-cv2.polylines(bounds,[pts],True,(0,0,255))
-
-# Get values for thresholding
-display.display_cam(cam, "image", thresh.get_segmentation)
 
 # Get other objects in the scene that have the same threshold values as the tracking object
 frames = []
@@ -52,7 +45,7 @@ for i in range(20):
     frames.append(cam.read()[1])
     time.sleep(0.01)
 
-thresh.seg.set_background_mask(frames, 2)
+thresh.seg.set_background_mask(frames, 5)
 cv2.imshow('image', thresh.seg.bg_mask.astype(np.uint8)*255)
 
 if cv2.waitKey(0)==ord('q'):
@@ -61,11 +54,11 @@ if cv2.waitKey(0)==ord('q'):
 mouse = Mouse(point, boundary, repel_all, towards_cat)
 dispBounds = np.asarray([dispW,dispH])
 
-def update(frame, mouse, time_l):
-    img = thresh.get_segmentation(frame)
-    cat_pos = thresh.get_midpoint(img.any(axis=-1).astype(np.uint8))
+def update(frame, mouse, state):
+    mask = thresh.get_mask(frame)
+    cat_pos = thresh.get_midpoint(mask)
 
-    if time.time() - time_l[0] > 0.015:
+    if time.time() - state[0] > 0.015:
         mouse.update_position(cat_pos)
         x, y = mouse.position
         pan = interp_p[x, y]
@@ -74,12 +67,15 @@ def update(frame, mouse, time_l):
             kit.servo[0].angle=pan
             kit.servo[1].angle=tilt
         
-        time_l[0] = time.time()
+        state[0] = time.time()
 
-    return img
+    cv2.polylines(frame,[pts],True,(0,0,255))
+    cv2.circle(frame, tuple(mouse.position), 6, (0,0,255),-1)
+    cv2.circle(frame, tuple(cat_pos), 6, (255,255,0),-1)
+    return frame
 
-time_l = [time.time()]
-display.display_cam(cam, "image", update, mouse=mouse, time_l=time_l)
+state = [time.time()]
+display.display_cam(cam, "image", update, mouse=mouse, state=state)
 
 cam.release()
 cv2.destroyAllWindows()
