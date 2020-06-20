@@ -1,4 +1,5 @@
 import numpy as np
+import cv2
 
 def normalize_points(arr):
     shape = arr.shape
@@ -7,11 +8,9 @@ def normalize_points(arr):
     return arr.reshape(shape)
 
 def distance_from_line(vertices, normals, point): 
-    # vectors from start of line segment to given point
     vec1 = point - vertices
     dot_p = np.sum(vec1*normals,axis=1)
 
-    # n
     return(dot_p)
 
 def magnitude(a, axis=0):
@@ -29,9 +28,5 @@ def in_range_video(frames, lower_bound, upper_bound):
 
     return np.logical_and(g,l).any(axis=0)
 
-def mask_img(arr, mask, replace_value = None):
-    dispW, dispH, channels = arr.shape
-    if replace_value is None:
-        replace_value = np.zeros(channels, dtype=np.uint8)
-
-    return np.where(mask.reshape(dispW,dispH,1), arr, replace_value)
+def mask_img(arr, mask):
+    return cv2.bitwise_and(arr, arr, mask=mask.astype(np.uint8))
