@@ -45,13 +45,6 @@ def update(frame, img_overlay):
 curr_time = [time.time()]
 cv2.setMouseCallback('image', move_servos)
 display.display_cam(cam, 'image', update, img_overlay=img_overlay)
-# while True:
-#     ret, frame = cam.read()
-#     frame[img_overlay.astype(bool)] = [255,0,0]
-#     cv2.imshow('image', frame)
-    
-#     if cv2.waitKey(1)==ord('q'):
-#         break
 
 cam.release()
 cv2.destroyAllWindows()
