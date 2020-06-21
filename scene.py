@@ -56,10 +56,14 @@ class Boundary:
 
         return self.get_point_in_triangle(vec1, vec2) + self.vertices[triangle_idx]
 
-    def draw_attributes(self, img):
+    def draw_attributes(self, img, vertices=True, boundary=True, interior=True, normals=True):
         import cv2
         for i, v in enumerate(self.vertices):
-            cv2.circle(img, tuple(v), 6, (255,0,0),-1)
-            cv2.line(img, tuple(v), tuple(self.edge_vecs[i].astype(np.int16) + v), (200,0,200), 1)
-            cv2.line(img, tuple(v), tuple(self.interior_vecs[i].astype(np.int16) + v), (200,0,200), 1)
-            cv2.arrowedLine(img, tuple(v), tuple((self.edge_normals[i] * 50).astype(np.int16) + v), (0,255,255), 1)
+            if vertices:
+                cv2.circle(img, tuple(v), 6, (255,0,0),-1)
+            if boundary:
+                cv2.line(img, tuple(v), tuple(self.edge_vecs[i].astype(np.int16) + v), (200,0,200), 1)
+            if interior:
+                cv2.line(img, tuple(v), tuple(self.interior_vecs[i].astype(np.int16) + v), (200,0,200), 1)
+            if normals:
+                cv2.arrowedLine(img, tuple(v), tuple((self.edge_normals[i] * 50).astype(np.int16) + v), (0,255,255), 1)
