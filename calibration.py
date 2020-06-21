@@ -31,26 +31,8 @@ cv2.moveWindow("image", 200,0)
 # Create tracking object for laser
 thresh = TrackObject(Threshold, init_vals = [191,191,191,255,255,255])
 
-# Get values for thresholding
-display.display_cam(cam, "image", thresh.get_segmentation)
-
-# Move laser out of the way
-kit.servo[0].angle = 0
-kit.servo[1].angle = 0
-cam.read()
-time.sleep(3)
-
 # Get other objects in the scene that have the same threshold values as the tracking object
-frames = []
-for i in range(20):
-    frames.append(cam.read()[1])
-    time.sleep(0.01)
-
-thresh.seg.set_background_mask(frames, 20)
-cv2.imshow('image', thresh.seg.bg_mask.astype(np.uint8)*255)
-
-if cv2.waitKey(0)==ord('q'):
-    sys.exit(0)
+thresh.seg.set_background_mask_cam(cam, num_frames=20, tolerance=20)
 
 # Define grid of pan and tilt coordinates to sample 
 min_pan, max_pan, min_tilt, max_tilt, step =  20, 181, 120, 181, 5
