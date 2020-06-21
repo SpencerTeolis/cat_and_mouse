@@ -34,27 +34,38 @@ class Boundary:
         return points[ConvexHull(points).vertices]
 
     def project_on_normals(self, point):
-        vec1 = point - self.vertices.reshape(-1,2)
+        vec1 = point - self.vertices
         return np.sum(vec1 * self.edge_normals, axis=1)
 
     def in_bounds(self, point) -> bool:
         return (self.project_on_normals(point) >= 0).all()
 
-    def get_point_in_triangle(self, vec1, vec2):
-        a1, a2 = np.random.uniform(0, 1, size=2)
-        while a2 > 1-a1:
-            a1, a2 = np.random.uniform(0, 1, size=2)
+    def get_point_in_triangle(self, idx, n=1):
+        adj_idx = (idx+1) % len(self.interior_vecs)
 
-        return a1 * vec1 + a2 * vec2
+        # Get point in quadrilateral defined by linear combination of vec1 and vec2
+        a1, a2 = np.random.uniform(0, 1, size=(2,n))
+        vec1 = -self.interior_vecs[idx]
+        vec2 = -self.interior_vecs[adj_idx]
+        p = a1.reshape(-1,1) * vec1 + a2.reshape(-1,1) * vec2 + self.interior_point
 
-    def get_point_in_bounds(self):
+        # Check if point is in triangle - dotproduct is negative 
+        p_vec = p - self.vertices[idx]
+        dot_p = np.sum(p_vec * self.edge_normals[idx], axis=1).reshape(-1,1)
+        
+        # Get 180 degree rotation of points about center of quadrilateral
+        v1, v2 = self.vertices[idx], self.vertices[adj_idx]
+        mid = (v1 + (v2 - v1)/2).astype(np.int16)
+        rotation = mid - (p - mid)
+
+        # if point in triagle return it else return point rotated 180 degrees which is also in the triangle
+        return np.where(dot_p<0, rotation, p)
+
+    def get_point_in_bounds(self, n=1):
         probs = self.areas/np.sum(self.areas)
-        triangle_idx = np.random.choice(len(self.areas), p=probs)
+        triangle_idx = np.random.choice(len(self.areas), size=n, p=probs)
 
-        vec1 = self.interior_vecs[triangle_idx]
-        vec2 = self.edge_vecs[triangle_idx]
-
-        return self.get_point_in_triangle(vec1, vec2) + self.vertices[triangle_idx]
+        return np.squeeze(self.get_point_in_triangle(triangle_idx, n))
 
     def draw_attributes(self, img, vertices=True, boundary=True, interior=True, normals=True):
         import cv2
